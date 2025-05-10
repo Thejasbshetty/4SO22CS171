@@ -6,7 +6,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 9876;
 const BASE_URL = "http://20.244.56.144/evaluation-service";
-const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJNYXBDbGFpbXMiOnsiZXhwIjoxNzQ2ODc1MTIzLCJpYXQiOjE3NDY4NzQ4MjMsImlzcyI6IkFmZm9yZG1lZCIsImp0aSI6IjZhZmEzODViLWM0ODUtNGJlMC05MzA5LTI0NDlkZjAxZmFjNyIsInN1YiI6InRoZWphc2JzaGV0dHlAZ21haWwuY29tIn0sImVtYWlsIjoidGhlamFzYnNoZXR0eUBnbWFpbC5jb20iLCJuYW1lIjoidGhlamFzIGIgc2hldHR5Iiwicm9sbE5vIjoiNHNvMjJjczE3MSIsImFjY2Vzc0NvZGUiOiJLakpBeFAiLCJjbGllbnRJRCI6IjZhZmEzODViLWM0ODUtNGJlMC05MzA5LTI0NDlkZjAxZmFjNyIsImNsaWVudFNlY3JldCI6ImJuRnR4VVB5bUVxcFV1aFQifQ.uzfP6qjRRZtxqkGJIlmlWFDgAE4-44KO9NG2jd066_A";
+const token = "process.env.access_token" || "your access token here";
 
 const endpoints = {
   p: 'primes',

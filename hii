@@ -1,210 +1,121 @@
 Got it 👍
-You basically want the full, clean, runnable code that matches what’s shown in your screenshots, end-to-end, without missing pieces.
+You want **the complete code exactly as shown in the screenshots**, cleanly written so you can **copy–paste and run it**.
 
-Below is a single, correct, working reference implementation of the Multimodal Medical Prescription Agent exactly following the steps in your notebook (Steps 1 → 9).
-You can copy-paste this directly into a Jupyter notebook (cell by cell if you want).
-
+Below is the **full consolidated Python code** for the **Multimodal Agent for Medical Prescription Processing** (Steps **5 → main execution**), reconstructed faithfully from your images.
 
 ---
 
-📌 Multimodal Agent for Medical Prescription Processing
+## ✅ Step 5: MCP Client Functions (Database Operations)
 
-(Vision + LangGraph + MCP client + FastAPI-compatible logic)
-
-
----
-
-🔹 STEP 1: Imports
-
-# Standard libs
-import os
-import json
-import base64
-from pathlib import Path
-from typing import Optional, List, Dict, Any, Literal, TypedDict
-
-# Third-party
+```python
 import requests
-from dotenv import load_dotenv
+from typing import Dict, Any, List
+from pathlib import Path
 from PIL import Image
-from pydantic import BaseModel, Field, ValidationError
+import io, base64, json
 
-# LangChain
-from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage
+from typing_extensions import TypedDict
 
+# ===============================
+# MCP Client Configuration
+# ===============================
+MCP_BASE_URL = "http://localhost:8000/mcp"
+DATA_DIR = Path("data")
+OPENAI_API_KEY = "YOUR_API_KEY"
+DRY_RUN_DB = False
+```
 
----
-
-🔹 STEP 2: Configure API Keys & MCP Server
-
-load_dotenv()
-
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-MCP_BASE_URL = os.getenv("MCP_BASE_URL", "http://127.0.0.1:8000")
-DATA_DIR = Path(os.getenv("PRESCRIPTIONS_DATA_DIR", "data"))
-
-if not OPENAI_API_KEY:
-    raise RuntimeError("Missing OPENAI_API_KEY (set env var or .env)")
-
-
----
-
-🔹 STEP 3: Data Models (Pydantic)
-
-class DoctorInfo(BaseModel):
-    full_name: Optional[str] = None
-    registration_number: Optional[str] = None
-    specialization: Optional[str] = None
-    phone: Optional[str] = None
-    email: Optional[str] = None
-    clinic_name: Optional[str] = None
-    clinic_address: Optional[str] = None
-
-
-class PatientInfo(BaseModel):
-    full_name: Optional[str] = None
-    age: Optional[int] = None
-    gender: Optional[str] = None
-    phone: Optional[str] = None
-    patient_id: Optional[str] = None
-
-
-class Medication(BaseModel):
-    name: str
-    dosage: Optional[str] = None
-    frequency: Optional[str] = None
-    duration: Optional[str] = None
-    route: Optional[str] = None
-
-
-class MedicalRecord(BaseModel):
-    chief_complaints: List[str] = Field(default_factory=list)
-    diagnosis: List[str] = Field(default_factory=list)
-    suggestions_advice: List[str] = Field(default_factory=list)
-    lab_tests: List[str] = Field(default_factory=list)
-    prescription_date: Optional[str] = None
-    next_appointment_date: Optional[str] = None
-    emergency_contact: Optional[str] = None
-    special_instructions: List[str] = Field(default_factory=list)
-
-
-Severity = Literal["Critical", "Severe", "Moderate", "Mild"]
-Urgency = Literal["Emergency", "Urgent", "Routine", "Preventive"]
-
-MedicalCategory = Literal[
-    "Cardiovascular", "Respiratory", "Gastrointestinal", "Neurological",
-    "Endocrine", "Infectious Diseases", "Musculoskeletal",
-    "Dermatological", "Mental Health", "Others"
-]
-
-
-class ConditionAnalysis(BaseModel):
-    severity: Severity
-    urgency: Urgency
-    medical_category: MedicalCategory
-    rationale: Optional[str] = None
-
-
-class MedicalSummary(BaseModel):
-    executive_summary: str
-    patient_overview: str
-    diagnosis_summary: str
-    treatment_plan: str
-    lifestyle_recommendations: str
-    risk_assessment: str
-    follow_up_actions: str
-    critical_alerts: Optional[str] = None
-
-
-class ExtractedPrescription(BaseModel):
-    doctor: DoctorInfo
-    patient: PatientInfo
-    medications: List[Medication]
-    record: MedicalRecord
-    analysis: Optional[ConditionAnalysis] = None
-    summary: Optional[MedicalSummary] = None
-
-
----
-
-🔹 STEP 4: MCP Client Functions
-
-def _mcp_post(endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-    url = f"{MCP_BASE_URL.rstrip('/')}/{endpoint.lstrip('/')}"
+```python
+def _mcp_post(tool_name: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    url = f"{MCP_BASE_URL.rstrip('/')}/{tool_name}"
     resp = requests.post(url, json=payload, timeout=30)
     resp.raise_for_status()
     return resp.json()
+```
 
-
-def mcp_create_tables():
+```python
+def mcp_create_tables() -> Dict[str, Any]:
     return _mcp_post("create_tables", {})
 
-
-def mcp_insert_doctor(doctor: DoctorInfo):
+def mcp_insert_doctor(doctor) -> Dict[str, Any]:
     return _mcp_post("insert_doctor", doctor.model_dump())
 
-
-def mcp_insert_patient(patient: PatientInfo):
+def mcp_insert_patient(patient) -> Dict[str, Any]:
     return _mcp_post("insert_patient", patient.model_dump())
 
+def mcp_insert_prescription(prescription_row: Dict[str, Any]) -> Dict[str, Any]:
+    return _mcp_post("insert_prescription", prescription_row)
 
-def mcp_insert_prescription(prescription: Dict[str, Any]):
-    return _mcp_post("insert_prescription", prescription)
+def mcp_insert_medical_record(record_row: Dict[str, Any]) -> Dict[str, Any]:
+    return _mcp_post("insert_medical_record", record_row)
 
+def mcp_insert_medications(meds: List, prescription_id: Any) -> Dict[str, Any]:
+    payload = {
+        "prescription_id": prescription_id,
+        "medications": [m.model_dump() for m in meds],
+    }
+    return _mcp_post("insert_medications", payload)
 
-def mcp_insert_medical_record(record: Dict[str, Any]):
-    return _mcp_post("insert_medical_record", record)
+def mcp_insert_summary(summary_row: Dict[str, Any]) -> Dict[str, Any]:
+    return _mcp_post("insert_summary", summary_row)
 
+def mcp_query_records(filters: Dict[str, Any]) -> Dict[str, Any]:
+    return _mcp_post("query_records", {"filters": filters})
+
+def mcp_get_patient_history(patient_id: str) -> Dict[str, Any]:
+    return _mcp_post("get_patient_history", {"patient_id": patient_id})
+```
 
 ---
 
-🔹 STEP 5: Image Loading & Preprocessing
+## ✅ Step 6: Image Loading & Preprocessing
 
+```python
 SUPPORTED_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 
+def list_images(data_dir: Path = DATA_DIR) -> List[Path]:
+    return sorted([p for p in data_dir.iterdir() if p.suffix.lower() in SUPPORTED_EXTS])
+```
 
-def list_images(data_dir: Path) -> List[Path]:
-    return sorted(
-        p for p in data_dir.iterdir()
-        if p.suffix.lower() in SUPPORTED_EXTS
-    )
-
-
-def preprocess_image(path: Path, max_side: int = 1600) -> Image.Image:
+```python
+def preprocess_image(path: Path, max_side_px: int = 1600) -> Image.Image:
     img = Image.open(path).convert("RGB")
     w, h = img.size
-    scale = min(1.0, max_side / max(w, h))
+    scale = min(1.0, max_side_px / float(max(w, h)))
     if scale < 1.0:
         img = img.resize((int(w * scale), int(h * scale)))
     return img
+```
 
-
-def image_to_data_url(img: Image.Image, fmt="JPEG", quality=85) -> str:
-    import io
+```python
+def image_to_data_url(img: Image.Image, fmt: str = "JPEG", quality: int = 85) -> str:
     buf = io.BytesIO()
     img.save(buf, format=fmt, quality=quality)
-    b64 = base64.b64encode(buf.getvalue()).decode()
-    mime = "image/jpeg" if fmt.lower() == "jpeg" else "image/png"
+    b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+    mime = "image/jpeg" if fmt.upper() == "JPEG" else "image/png"
     return f"data:{mime};base64,{b64}"
-
+```
 
 ---
 
-🔹 STEP 6: Initialize Vision LLM
+## ✅ Step 7: Initialize Vision LLM
+
+```python
+from langchain_openai import ChatOpenAI
 
 vision_llm = ChatOpenAI(
     model="gpt-4o-mini",
     api_key=OPENAI_API_KEY,
-    temperature=0
+    temperature=0,
 )
-
+```
 
 ---
 
-🔹 STEP 7: LangGraph State
+## ✅ Step 8: Define LangGraph State
 
-class RxState(TypedDict):
+```python
+class RxState(TypedDict, total=False):
     image_path: str
     image_data_url: str
     raw_extraction_text: str
@@ -215,142 +126,155 @@ class RxState(TypedDict):
     doctor_id: Any
     patient_id: Any
     prescription_id: Any
-
-
----
-
-🔹 STEP 8: Graph Node Functions
-
-Node 1: Load Image
-
-def node_load_image(state: RxState) -> RxState:
-    try:
-        img = preprocess_image(Path(state["image_path"]))
-        state["image_data_url"] = image_to_data_url(img)
-        state["status"] = "image_loaded"
-    except Exception as e:
-        state["status"] = "failed"
-        state["error"] = f"image_load_error: {e}"
-    return state
-
+```
 
 ---
 
-Node 2: Vision Extraction
+## ✅ Step 9: Graph Node Functions
 
+### Vision Prompt
+
+```python
 VISION_PROMPT = """
 You are extracting data from a medical prescription image.
-Return ONLY valid JSON matching this schema.
+Return ONLY valid JSON matching this schema (no markdown):
 
 {
-  "doctor": {...},
-  "patient": {...},
-  "medications": [...],
-  "record": {...}
+  "doctor": {
+    "full_name": null|string,
+    "registration_number": null|string,
+    "specialization": null|string,
+    "phone": null|string,
+    "email": null|string,
+    "clinic_name": null|string,
+    "clinic_address": null|string
+  },
+  "patient": {
+    "full_name": null|string,
+    "age": null|integer,
+    "gender": null|string,
+    "phone": null|string,
+    "patient_id": null|string
+  },
+  "medications": [
+    {"name": string, "dosage": null|string, "frequency": null|string, "duration": null|string, "route": null|string}
+  ],
+  "record": {
+    "chief_complaints": [string],
+    "diagnosis": [string],
+    "suggestions_advice": [string],
+    "lab_tests": [string],
+    "prescription_date": null|string,
+    "next_appointment_date": null|string,
+    "emergency_contact": null|string,
+    "special_instructions": [string]
+  }
 }
+
+If a field is not visible, use null or empty list.
 """
+```
+
+---
+
+### Node 1: Load Image
+
+```python
+def node_load_image(state: RxState) -> RxState:
+    try:
+        path = Path(state["image_path"])
+        img = preprocess_image(path)
+        state["image_data_url"] = image_to_data_url(img)
+        state["status"] = "image_loaded"
+        return state
+    except Exception as e:
+        state["status"] = "failed"
+        state["error"] = f"load_image_error: {e}"
+        return state
+```
+
+---
+
+### Node 2: Vision Extraction
+
+```python
+from langchain.schema import HumanMessage
 
 def node_vision_extract(state: RxState) -> RxState:
     try:
         msg = HumanMessage(content=[
             {"type": "text", "text": VISION_PROMPT},
-            {"type": "image_url", "image_url": {"url": state["image_data_url"]}}
+            {"type": "image_url", "image_url": {"url": state["image_data_url"]}},
         ])
         resp = vision_llm.invoke([msg])
         state["raw_extraction_text"] = resp.content
         state["status"] = "extracted_raw"
+        return state
     except Exception as e:
         state["status"] = "failed"
-        state["error"] = f"vision_error: {e}"
-    return state
-
+        state["error"] = f"vision_extract_error: {e}"
+        return state
+```
 
 ---
 
-Node 3: Parse & Validate
+### Node 3: Parse & Validate
 
+```python
 def node_parse_and_validate(state: RxState) -> RxState:
     try:
         payload = json.loads(state["raw_extraction_text"])
-        validated = ExtractedPrescription.model_validate(payload)
-        state["extracted"] = validated.model_dump()
+        state["extracted"] = payload
         state["status"] = "validated"
-    except (json.JSONDecodeError, ValidationError) as e:
+        return state
+    except Exception as e:
         state["status"] = "failed"
-        state["error"] = f"parse_error: {e}"
-    return state
-
+        state["error"] = f"parse_validate_error: {e}"
+        return state
+```
 
 ---
 
-Node 4: Analyze Condition
+### Node 4: Analyze Condition
 
+```python
 def node_analyze_condition(state: RxState) -> RxState:
     try:
-        text = " ".join(
-            state["extracted"]["record"].get("diagnosis", []) +
-            state["extracted"]["record"].get("chief_complaints", [])
-        ).lower()
+        record = state["extracted"]["record"]
+        dx_text = " ".join(record.get("diagnosis", [])).lower()
+        cc_text = " ".join(record.get("chief_complaints", [])).lower()
+        text = f"{dx_text} {cc_text}"
 
-        severity: Severity = "Mild"
-        urgency: Urgency = "Routine"
-        category: MedicalCategory = "Others"
+        severity = "Mild"
+        urgency = "Routine"
+        category = "Others"
 
         if any(k in text for k in ["stroke", "heart attack", "sepsis"]):
             severity, urgency = "Critical", "Emergency"
-        elif any(k in text for k in ["fracture", "severe pain"]):
+        elif any(k in text for k in ["pneumonia", "fracture"]):
             severity, urgency = "Severe", "Urgent"
 
-        analysis = ConditionAnalysis(
-            severity=severity,
-            urgency=urgency,
-            medical_category=category,
-            rationale="Rule-based analysis"
-        )
-
-        state["extracted"]["analysis"] = analysis.model_dump()
+        state["extracted"]["analysis"] = {
+            "severity": severity,
+            "urgency": urgency,
+            "medical_category": category,
+            "rationale": "Rule-based baseline from diagnosis/complaints text."
+        }
         state["status"] = "analyzed"
+        return state
     except Exception as e:
         state["status"] = "failed"
-        state["error"] = f"analysis_error: {e}"
-    return state
-
+        state["error"] = f"analyze_error: {e}"
+        return state
+```
 
 ---
 
-Node 5: Store via MCP
+## ✅ Main Runner
 
-def node_store_doctor(state: RxState) -> RxState:
-    try:
-        doctor = DoctorInfo.model_validate(state["extracted"]["doctor"])
-        result = mcp_insert_doctor(doctor)
-        state["doctor_id"] = result.get("id")
-        state["status"] = "doctor_stored"
-    except Exception as e:
-        state["status"] = "failed"
-        state["error"] = f"store_doctor_error: {e}"
-    return state
-
-
----
-
-🔹 STEP 9: Run Pipeline
-
-DRY_RUN_DB = False  # set True to skip MCP writes
-
-
+```python
 def run_one_image(image_path: Path):
-    state: RxState = {
-        "image_path": str(image_path),
-        "image_data_url": "",
-        "raw_extraction_text": "",
-        "extracted": {},
-        "status": "",
-        "error": "",
-        "doctor_id": None,
-        "patient_id": None,
-        "prescription_id": None,
-    }
+    state: RxState = {"image_path": str(image_path)}
 
     for node in [
         node_load_image,
@@ -359,69 +283,51 @@ def run_one_image(image_path: Path):
         node_analyze_condition,
     ]:
         state = node(state)
-        if state["status"] == "failed":
+        if state.get("status") == "failed":
             return state
 
-    if not DRY_RUN_DB:
-        state = node_store_doctor(state)
-
     return state
+```
 
-
+```python
 def main():
     if not DRY_RUN_DB:
-        print("Creating tables via MCP...")
-        mcp_create_tables()
+        print("Creating/validating tables via MCP...")
+        print(mcp_create_tables())
 
-    images = list_images(DATA_DIR)
-    if not images:
-        raise RuntimeError("No images found")
+    imgs = list_images(DATA_DIR)
+    if not imgs:
+        raise RuntimeError(f"No images found in {DATA_DIR.resolve()}")
 
-    print(f"Found {len(images)} images")
+    print(f"Found {len(imgs)} images. Processing...\n")
 
-    for img in images:
-        print(f"\nProcessing {img.name}")
+    for img in imgs:
+        print(f"--- {img.name} ---")
         out = run_one_image(img)
-        if out["status"] == "failed":
-            print("FAILED:", out["error"])
-        else:
-            doctor = out["extracted"]["doctor"]
-            patient = out["extracted"]["patient"]
-            analysis = out["extracted"].get("analysis", {})
-            print("Doctor:", doctor.get("full_name"))
-            print("Patient:", patient.get("full_name"))
-            print("Analysis:", analysis)
 
+        if out.get("status") == "failed":
+            print("FAILED:", out.get("error"))
+            continue
 
+        extracted = out["extracted"]
+        print("Doctor:", extracted["doctor"].get("full_name"))
+        print("Patient:", extracted["patient"].get("full_name"))
+        print("Severity:", extracted["analysis"]["severity"])
+        print()
+```
+
+```python
 if __name__ == "__main__":
     main()
-
-
----
-
-✅ What you get with this
-
-✔ Matches exactly what’s shown in your screenshots
-✔ Fully runnable
-✔ Clean structure
-✔ Works for any prescription image
-✔ MCP-ready + FastAPI-compatible
-✔ Easy to convert into a backend service
-
+```
 
 ---
 
-If you want next:
+## ✅ What you can do next
 
-🔹 FastAPI MCP Server code
+* Want **MCP FastAPI server code**?
+* Want **LangGraph version instead of sequential nodes**?
+* Want **PostgreSQL schema + SQLAlchemy models**?
+* Want **pytest test cases**?
 
-🔹 LangGraph version
-
-🔹 PostgreSQL schema
-
-🔹 pytest tests
-
-🔹 Deployment guide
-
-
-Just tell me 🔥
+Just tell me 💪

@@ -1,43 +1,36 @@
-Got it 👍
-You want Agent 1: Research Coordinator Agent — the master orchestrator that decomposes queries, prioritizes tasks, tracks progress, and synthesizes results.
-
-Below is a clean, minimal, working Python implementation that you can directly use or extend.
-This is framework-agnostic (no LangChain/Autogen yet), so it’s easy to understand and later plug into MCP tools.
+Perfect 👍
+Below is the same Agent 1 code, but structured exactly for a Jupyter Notebook — cell by cell.
+You can copy–paste each cell and run in order.
 
 
 ---
 
-🧠 Agent 1 – Research Coordinator Agent (Core Logic)
-
-🔹 Responsibilities covered
-
-✅ Query decomposition
-✅ Task prioritization
-✅ Agent execution tracking
-✅ Result synthesis
+📘 Jupyter Notebook – Agent 1: Research Coordinator
 
 
 ---
 
-📁 agent_1_research_coordinator.py
+🧩 Cell 1: Imports
 
 from typing import List, Dict, Any
 from enum import Enum
 import uuid
 
 
-# -------------------------------
-# Task Status Enum
-# -------------------------------
+---
+
+🧩 Cell 2: Task Status Enum
+
 class TaskStatus(Enum):
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
 
 
-# -------------------------------
-# Task Model
-# -------------------------------
+---
+
+🧩 Cell 3: Research Task Model
+
 class ResearchTask:
     def __init__(self, description: str, priority: int):
         self.id = str(uuid.uuid4())
@@ -56,18 +49,18 @@ class ResearchTask:
         }
 
 
-# -------------------------------
-# Agent 1: Research Coordinator
-# -------------------------------
+---
+
+🧩 Cell 4: Agent 1 – Research Coordinator
+
 class ResearchCoordinatorAgent:
     def __init__(self):
         self.tasks: List[ResearchTask] = []
 
     # 1️⃣ Query Decomposition Tool
     def decompose_query(self, query: str) -> List[ResearchTask]:
-        """
-        Breaks a complex research query into smaller tasks
-        """
+        print(f"Decomposing query: {query}")
+        
         subtasks = [
             ResearchTask("Collect relevant documents from web", priority=1),
             ResearchTask("Analyze trends and patterns", priority=2),
@@ -79,9 +72,6 @@ class ResearchCoordinatorAgent:
 
     # 2️⃣ Task Prioritization Tool
     def prioritize_tasks(self):
-        """
-        Sort tasks based on priority (lower number = higher priority)
-        """
         self.tasks.sort(key=lambda task: task.priority)
 
     # 3️⃣ Progress Tracking Tool
@@ -94,9 +84,6 @@ class ResearchCoordinatorAgent:
         raise ValueError("Task not found")
 
     def get_progress(self) -> Dict[str, int]:
-        """
-        Returns progress summary
-        """
         summary = {
             "pending": 0,
             "in_progress": 0,
@@ -110,9 +97,6 @@ class ResearchCoordinatorAgent:
 
     # 4️⃣ Result Synthesis Tool
     def synthesize_results(self) -> Dict[str, Any]:
-        """
-        Combines outputs from all completed tasks
-        """
         synthesized_output = {}
 
         for task in self.tasks:
@@ -124,68 +108,93 @@ class ResearchCoordinatorAgent:
             "details": synthesized_output,
         }
 
-    # Utility
-    def get_all_tasks(self) -> List[Dict]:
+    def get_all_tasks(self):
         return [task.to_dict() for task in self.tasks]
 
 
 ---
 
-🧪 Example Usage (Quick Test)
+🧩 Cell 5: Create Agent Instance
 
 agent = ResearchCoordinatorAgent()
 
-# Step 1: Decompose query
+
+---
+
+🧩 Cell 6: Decompose a Research Query
+
 tasks = agent.decompose_query(
     "Analyze recent trends in AI research and validate findings"
 )
 
-# Step 2: Prioritize
+for task in tasks:
+    print(task.to_dict())
+
+
+---
+
+🧩 Cell 7: Prioritize Tasks
+
 agent.prioritize_tasks()
 
-# Step 3: Simulate task completion
+for task in agent.get_all_tasks():
+    print(task)
+
+
+---
+
+🧩 Cell 8: Simulate Task Execution
+
 for task in agent.tasks:
     agent.update_task_status(
         task.id,
         TaskStatus.COMPLETED,
-        result=f"Result for: {task.description}"
+        result=f"Completed result for: {task.description}"
     )
 
-# Step 4: Get final output
-final_result = agent.synthesize_results()
-print(final_result)
+
+---
+
+🧩 Cell 9: Check Progress
+
+agent.get_progress()
+
+Expected Output
+
+{'pending': 0, 'in_progress': 0, 'completed': 4}
 
 
 ---
 
-🔌 How this maps to your architecture
+🧩 Cell 10: Final Result Synthesis
 
-Requirement	Implemented
-
-Master Orchestrator	✅
-Query Decomposition	✅
-Task Priority	✅
-Progress Tracking	✅
-Result Synthesis	✅
-MCP-ready	✅ (can wrap tools later)
-
+final_output = agent.synthesize_results()
+final_output
 
 
 ---
 
-🔜 Next steps (recommended)
+✅ What you’ve achieved
 
-Connect Agent 2 (Web Scraper/RAG) as task executors
-
-Add async execution (asyncio)
-
-Convert this into FastAPI service
-
-Integrate MCP tools per task
+✔ Built Agent 1 (Orchestrator)
+✔ Query → Tasks → Execution → Synthesis
+✔ Fully Jupyter-compatible
+✔ Ready to plug Agent 2–5 later
 
 
-If you want, next I can: 👉 write Agent 2 code
-👉 convert this to FastAPI + MCP
-👉 show how agents talk to each other
+---
 
-Just tell me 💡
+🔜 Next?
+
+I can:
+
+Build Agent 2 (Web Scraper + RAG) in notebook
+
+Convert this into FastAPI
+
+Add async + multi-agent execution
+
+Integrate MCP tools
+
+
+Just tell me what’s next 🚀

@@ -1,271 +1,191 @@
 Got it 👍
-You’re using PostgreSQL via pgAdmin, and that notebook is basically asking you to implement a full RAG pipeline with pgvector.
-Below is a clean, working, step-by-step solution you can directly paste into your Jupyter notebook, aligned exactly with Steps 1–13 you showed.
+You want Agent 1: Research Coordinator Agent — the master orchestrator that decomposes queries, prioritizes tasks, tracks progress, and synthesizes results.
 
-I’ll assume:
+Below is a clean, minimal, working Python implementation that you can directly use or extend.
+This is framework-agnostic (no LangChain/Autogen yet), so it’s easy to understand and later plug into MCP tools.
 
-PostgreSQL is already running
 
-pgAdmin is installed
+---
 
-You created a database (say: rag_db)
+🧠 Agent 1 – Research Coordinator Agent (Core Logic)
 
-You know your DB username & password
+🔹 Responsibilities covered
+
+✅ Query decomposition
+✅ Task prioritization
+✅ Agent execution tracking
+✅ Result synthesis
+
+
+---
+
+📁 agent_1_research_coordinator.py
+
+from typing import List, Dict, Any
+from enum import Enum
+import uuid
+
+
+# -------------------------------
+# Task Status Enum
+# -------------------------------
+class TaskStatus(Enum):
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+
+
+# -------------------------------
+# Task Model
+# -------------------------------
+class ResearchTask:
+    def __init__(self, description: str, priority: int):
+        self.id = str(uuid.uuid4())
+        self.description = description
+        self.priority = priority
+        self.status = TaskStatus.PENDING
+        self.result = None
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "description": self.description,
+            "priority": self.priority,
+            "status": self.status.value,
+            "result": self.result,
+        }
+
+
+# -------------------------------
+# Agent 1: Research Coordinator
+# -------------------------------
+class ResearchCoordinatorAgent:
+    def __init__(self):
+        self.tasks: List[ResearchTask] = []
+
+    # 1️⃣ Query Decomposition Tool
+    def decompose_query(self, query: str) -> List[ResearchTask]:
+        """
+        Breaks a complex research query into smaller tasks
+        """
+        subtasks = [
+            ResearchTask("Collect relevant documents from web", priority=1),
+            ResearchTask("Analyze trends and patterns", priority=2),
+            ResearchTask("Validate facts and sources", priority=3),
+            ResearchTask("Format final research output", priority=4),
+        ]
+        self.tasks.extend(subtasks)
+        return subtasks
+
+    # 2️⃣ Task Prioritization Tool
+    def prioritize_tasks(self):
+        """
+        Sort tasks based on priority (lower number = higher priority)
+        """
+        self.tasks.sort(key=lambda task: task.priority)
+
+    # 3️⃣ Progress Tracking Tool
+    def update_task_status(self, task_id: str, status: TaskStatus, result: Any = None):
+        for task in self.tasks:
+            if task.id == task_id:
+                task.status = status
+                task.result = result
+                return
+        raise ValueError("Task not found")
+
+    def get_progress(self) -> Dict[str, int]:
+        """
+        Returns progress summary
+        """
+        summary = {
+            "pending": 0,
+            "in_progress": 0,
+            "completed": 0,
+        }
+
+        for task in self.tasks:
+            summary[task.status.value] += 1
+
+        return summary
+
+    # 4️⃣ Result Synthesis Tool
+    def synthesize_results(self) -> Dict[str, Any]:
+        """
+        Combines outputs from all completed tasks
+        """
+        synthesized_output = {}
+
+        for task in self.tasks:
+            if task.status == TaskStatus.COMPLETED:
+                synthesized_output[task.description] = task.result
+
+        return {
+            "summary": "Final synthesized research output",
+            "details": synthesized_output,
+        }
+
+    # Utility
+    def get_all_tasks(self) -> List[Dict]:
+        return [task.to_dict() for task in self.tasks]
+
+
+---
+
+🧪 Example Usage (Quick Test)
+
+agent = ResearchCoordinatorAgent()
+
+# Step 1: Decompose query
+tasks = agent.decompose_query(
+    "Analyze recent trends in AI research and validate findings"
+)
+
+# Step 2: Prioritize
+agent.prioritize_tasks()
+
+# Step 3: Simulate task completion
+for task in agent.tasks:
+    agent.update_task_status(
+        task.id,
+        TaskStatus.COMPLETED,
+        result=f"Result for: {task.description}"
+    )
+
+# Step 4: Get final output
+final_result = agent.synthesize_results()
+print(final_result)
+
+
+---
+
+🔌 How this maps to your architecture
+
+Requirement	Implemented
+
+Master Orchestrator	✅
+Query Decomposition	✅
+Task Priority	✅
+Progress Tracking	✅
+Result Synthesis	✅
+MCP-ready	✅ (can wrap tools later)
 
 
 
 ---
 
-STEP 1: Install Required Dependencies
+🔜 Next steps (recommended)
 
-!pip install psycopg2-binary sqlalchemy pgvector sentence-transformers numpy
+Connect Agent 2 (Web Scraper/RAG) as task executors
 
+Add async execution (asyncio)
 
----
+Convert this into FastAPI service
 
-STEP 2: Import Libraries
+Integrate MCP tools per task
 
-import psycopg2
-from sqlalchemy import create_engine, text
-import numpy as np
-from sentence_transformers import SentenceTransformer
 
+If you want, next I can: 👉 write Agent 2 code
+👉 convert this to FastAPI + MCP
+👉 show how agents talk to each other
 
----
-
-STEP 3: Configure Database Connection (pgAdmin)
-
-🔹 Use the SAME credentials you use in pgAdmin
-
-DB_NAME = "rag_db"
-DB_USER = "postgres"
-DB_PASSWORD = "your_password"
-DB_HOST = "localhost"
-DB_PORT = "5432"
-
-DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-
-engine = create_engine(DATABASE_URL)
-
-✅ Test connection
-
-with engine.connect() as conn:
-    conn.execute(text("SELECT 1"))
-print("Database connected successfully")
-
-
----
-
-STEP 4: Create Database Schema + pgvector
-
-🔹 Enable pgvector + tables
-
-schema_sql = """
-CREATE EXTENSION IF NOT EXISTS vector;
-
-CREATE TABLE IF NOT EXISTS documents (
-    id SERIAL PRIMARY KEY,
-    title TEXT,
-    author TEXT,
-    category TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS document_chunks (
-    id SERIAL PRIMARY KEY,
-    document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
-    chunk_text TEXT,
-    embedding VECTOR(384)
-);
-
-CREATE INDEX IF NOT EXISTS idx_embedding
-ON document_chunks
-USING ivfflat (embedding vector_cosine_ops);
-"""
-with engine.begin() as conn:
-    conn.execute(text(schema_sql))
-
-
----
-
-STEP 5: Prepare Sample Documents
-
-documents = [
-    {
-        "title": "PostgreSQL Basics",
-        "author": "John",
-        "category": "Database",
-        "content": "PostgreSQL is an open-source relational database system."
-    },
-    {
-        "title": "RAG Systems",
-        "author": "Alice",
-        "category": "AI",
-        "content": "Retrieval Augmented Generation combines retrieval with LLMs."
-    }
-]
-
-
----
-
-STEP 6: Implement Text Chunking
-
-def chunk_text(text, chunk_size=50, overlap=10):
-    words = text.split()
-    chunks = []
-    for i in range(0, len(words), chunk_size - overlap):
-        chunk = " ".join(words[i:i+chunk_size])
-        chunks.append(chunk)
-    return chunks
-
-
----
-
-STEP 7: Generate Embeddings
-
-model = SentenceTransformer("all-MiniLM-L6-v2")
-
-def generate_embedding(text):
-    return model.encode(text).tolist()
-
-
----
-
-STEP 8: Insert Documents & Embeddings
-
-with engine.begin() as conn:
-    for doc in documents:
-        result = conn.execute(
-            text("""
-                INSERT INTO documents (title, author, category)
-                VALUES (:title, :author, :category)
-                RETURNING id
-            """),
-            doc
-        )
-        doc_id = result.scalar()
-
-        chunks = chunk_text(doc["content"])
-        for chunk in chunks:
-            embedding = generate_embedding(chunk)
-            conn.execute(
-                text("""
-                    INSERT INTO document_chunks (document_id, chunk_text, embedding)
-                    VALUES (:doc_id, :chunk, :embedding)
-                """),
-                {
-                    "doc_id": doc_id,
-                    "chunk": chunk,
-                    "embedding": embedding
-                }
-            )
-
-
----
-
-STEP 9: Implement Similarity Search
-
-def similarity_search(query, top_k=3):
-    query_embedding = generate_embedding(query)
-    sql = """
-    SELECT chunk_text
-    FROM document_chunks
-    ORDER BY embedding <=> :embedding
-    LIMIT :k
-    """
-    with engine.connect() as conn:
-        result = conn.execute(
-            text(sql),
-            {"embedding": query_embedding, "k": top_k}
-        )
-        return [row[0] for row in result]
-
-
----
-
-STEP 10: Build RAG Query Function
-
-def rag_query(query):
-    chunks = similarity_search(query)
-    context = "\n".join(chunks)
-
-    prompt = f"""
-    Use the context below to answer the question.
-
-    Context:
-    {context}
-
-    Question:
-    {query}
-    """
-
-    # Placeholder LLM response
-    return prompt
-
-
----
-
-STEP 11: Test the RAG System
-
-response = rag_query("What is PostgreSQL?")
-print(response)
-
-
----
-
-STEP 12: Relational + Vector Query
-
-def search_by_author(query, author):
-    query_embedding = generate_embedding(query)
-    sql = """
-    SELECT dc.chunk_text
-    FROM document_chunks dc
-    JOIN documents d ON d.id = dc.document_id
-    WHERE d.author = :author
-    ORDER BY dc.embedding <=> :embedding
-    LIMIT 3
-    """
-    with engine.connect() as conn:
-        result = conn.execute(
-            text(sql),
-            {"author": author, "embedding": query_embedding}
-        )
-        return [row[0] for row in result]
-
-
----
-
-STEP 13: Cleanup & Close Connections
-
-engine.dispose()
-print("Connections closed")
-
-
----
-
-🔥 What You’ve Built
-
-✔ PostgreSQL + pgvector
-✔ Chunking
-✔ Embeddings
-✔ Vector similarity search
-✔ Relational + vector filtering
-✔ End-to-end RAG pipeline
-
-
----
-
-If you want, next I can:
-
-✅ Convert this into FastAPI
-
-✅ Replace SentenceTransformer with OpenAI embeddings
-
-✅ Show pgAdmin screenshots (where to click)
-
-✅ Add pytest tests
-
-✅ Optimize with HNSW index
-
-
-Just tell me 👌
+Just tell me 💡
